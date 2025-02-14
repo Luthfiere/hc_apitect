@@ -1,11 +1,10 @@
-import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../config/api_config.dart';
 import '../service/auth_service.dart';
+import '../service/api_client.dart';
 
 class AttendanceResponse {
   final bool success;
@@ -18,7 +17,7 @@ class AttendanceResponse {
 }
 
 class AttendanceService {
-  static final String baseUrl = ApiConfig.baseUrl;
+  static final _apiClient = ApiClient();
 
   static Future<Map<String, dynamic>?> getDailyAttendance(
       int employeeId, String date) async {
@@ -29,25 +28,22 @@ class AttendanceService {
         return null;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api_mobile.php?operation=listDailyAttendance'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
+      final response = await _apiClient.post(
+        'api_mobile.php?operation=listDailyAttendance',
+        body: {
           'employee_id': employeeId,
           'date': date,
-        }),
+        },
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        if (jsonResponse['success'] == true) {
-          return jsonResponse['data'];
-        }
+      if (response['success'] == true) {
+        return response['data'];
       }
-      debugPrint('Failed to fetch daily attendance: ${response.body}');
+      
+      debugPrint('Failed to fetch daily attendance: $response');
       return null;
     } catch (e) {
       debugPrint('Error fetching daily attendance: $e');
@@ -64,25 +60,22 @@ class AttendanceService {
         return null;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api_mobile.php?operation=getAttendance'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
+      final response = await _apiClient.post(
+        'api_mobile.php?operation=getAttendance',
+        body: {
           'employee_id': employeeId,
           'date': date,
-        }),
+        },
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        if (jsonResponse['success'] == true) {
-          return jsonResponse['data'];
-        }
+      if (response['success'] == true) {
+        return response['data'];
       }
-      debugPrint('Failed to fetch attendance: ${response.body}');
+      
+      debugPrint('Failed to fetch attendance: $response');
       return null;
     } catch (e) {
       debugPrint('Error fetching attendance: $e');
@@ -136,44 +129,25 @@ class AttendanceService {
 
       final deviceInfo = await _getDeviceInfo();
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api_mobile.php?operation=recordAttendance'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
+      final response = await _apiClient.post(
+        'api_mobile.php?operation=recordAttendance',
+        body: {
           'employee_id': currentUser.employeeId,
           'address': address,
           'address_link': addressLink,
           'browser': deviceInfo['browser'],
           'os': deviceInfo['os'],
-        }),
+        },
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final jsonResponse = json.decode(response.body);
-        return AttendanceResponse(
-          success: jsonResponse['success'] ?? false,
-          message: jsonResponse['message'] ?? 'Attendance recorded successfully',
-        );
-      } else {
-        final jsonResponse = json.decode(response.body);
-        return AttendanceResponse(
-          success: false,
-          message: jsonResponse['message'] ?? 'Failed to record attendance. Server responded with status ${response.statusCode}',
-        );
-      }
-    } on FormatException {
       return AttendanceResponse(
-        success: false,
-        message: 'Invalid response format from server',
+        success: response['success'] ?? false,
+        message: response['message'] ?? 'Attendance recorded successfully',
       );
-    } on http.ClientException {
-      return AttendanceResponse(
-        success: false,
-        message: 'Network error. Please check your internet connection.',
-      );
+      
     } catch (e) {
       return AttendanceResponse(
         success: false,

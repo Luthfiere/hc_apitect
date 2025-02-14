@@ -426,9 +426,11 @@ Future<void> _getCurrentPosition() async {
               )
             : Text(
                 buttonText,
+                maxLines: 1,
+                overflow: TextOverflow.visible,
                 style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 34,
+                          fontSize: 24,
                 ),
               ),
       ),
@@ -789,6 +791,8 @@ Future<void> _getCurrentPosition() async {
                                   ),
                                   Text(
                                     "Clock out: ${clockOutTime != null ? clockOutTime!.toLocal().toString().split(' ')[1].split('.')[0] : '--:--:--'}",
+                                    maxLines: 1,
+                                    overflow: TextOverflow.visible
                                   ),
                                 ],
                               ),

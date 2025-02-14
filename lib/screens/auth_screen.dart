@@ -49,23 +49,29 @@ class AuthScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    _showSignInBottomSheet(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
+                    onPressed: () {
+                      _showSignInBottomSheet(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
-                        side: BorderSide(color: Colors.red)),
-                    backgroundColor: const Color.fromRGBO(204, 0, 0, 1.0),
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 133, vertical: 10),
-                  ),
-                  child: const Text('Sign In',
+                        side: BorderSide(color: Colors.red)
+                      ),
+                      backgroundColor: const Color.fromRGBO(204, 0, 0, 1.0),
+                      // Use minimumSize instead of padding for better control
+                      minimumSize: Size(MediaQuery.of(context).size.width * 0.8, 48),
+                    ),
+                    child: const Text(
+                      'Sign In',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
-                      )),
-                ),
+                      ),
+                      // Prevent text wrapping
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                    ),
+                  )
               ],
             ),
           ),
@@ -117,6 +123,7 @@ class AuthScreen extends StatelessWidget {
                       "Sign In",
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      softWrap: false
                     ),
                     const SizedBox(height: 16),
                     TextField(
