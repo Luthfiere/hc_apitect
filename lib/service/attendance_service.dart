@@ -9,7 +9,7 @@ import '../service/api_client.dart';
 class AttendanceResponse {
   final bool success;
   final String message;
-  
+
   AttendanceResponse({
     required this.success,
     required this.message,
@@ -42,7 +42,7 @@ class AttendanceService {
       if (response['success'] == true) {
         return response['data'];
       }
-      
+
       debugPrint('Failed to fetch daily attendance: $response');
       return null;
     } catch (e) {
@@ -74,7 +74,7 @@ class AttendanceService {
       if (response['success'] == true) {
         return response['data'];
       }
-      
+
       debugPrint('Failed to fetch attendance: $response');
       return null;
     } catch (e) {
@@ -147,7 +147,6 @@ class AttendanceService {
         success: response['success'] ?? false,
         message: response['message'] ?? 'Attendance recorded successfully',
       );
-      
     } catch (e) {
       return AttendanceResponse(
         success: false,

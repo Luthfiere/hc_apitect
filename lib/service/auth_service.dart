@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:secondly/service/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../models/user_data.dart';
 import '../models/login_response.dart';
@@ -11,29 +12,55 @@ class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _userDataKey = 'user_data';
   static const String _persistLoginKey = 'persist_login';
+  static const String _platformKey = 'login_platform';
+
   static final _apiClient = ApiClient();
 
   // Private constructor to prevent instantiation
   AuthService._();
-  
+
   static UserData? _currentUser;
   static String? _authToken;
 
   // Getter for current user
   static UserData? get currentUser => _currentUser;
-  
+
   // Getter for auth token
   static String? get authToken => _authToken;
 
   static bool _initialized = false;
 
+  static String getCurrentPlatform() {
+    if (kIsWeb) return "Web";
+    return "Mobile";
+  }
+
+  static Future<void> saveLoginPlatform(String platform) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_platformKey, platform);
+    } catch (e) {
+      print("Error saving platform: $e");
+    }
+  }
+
+  static Future<String?> getLastLoginPlatform() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_platformKey);
+    } catch (e) {
+      print('Error getting login platform: $e');
+      return null;
+    }
+  }
+
   /// Initialize auth state with error handling
   static Future<void> init() async {
     if (_initialized) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Check if we should persist login
       final shouldPersist = prefs.getBool(_persistLoginKey) ?? true;
       if (!shouldPersist) {
@@ -43,7 +70,7 @@ class AuthService {
 
       // Get stored token
       _authToken = prefs.getString(_tokenKey);
-      
+
       // Get stored user data
       final userDataString = prefs.getString(_userDataKey);
       if (userDataString != null) {
@@ -65,11 +92,14 @@ class AuthService {
     }
   }
 
-
-   // Login with persist option
-  static Future<LoginResponse> login(String username, String password, {bool persist = true}) async {
+  // Login with persist option
+  static Future<LoginResponse> login(String username, String password,
+      {bool persist = true}) async {
+    print("Logged in from: ${getCurrentPlatform()}");
     try {
-      if (ApiConfig.isDevelopment && username == 'admin' && password == 'admin') {
+      if (ApiConfig.isDevelopment &&
+          username == 'admin' &&
+          password == 'admin') {
         return await _handleAdminLogin();
       }
 
@@ -80,6 +110,7 @@ class AuthService {
           'password': password,
         },
       );
+      print('Login API response: $response');
 
       final loginResponse = LoginResponse.fromJson(response);
 
@@ -97,7 +128,8 @@ class AuthService {
   static bool isTokenExpired(String token) {
     try {
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      final expiration = DateTime.fromMillisecondsSinceEpoch(decodedToken['exp'] * 1000);
+      final expiration =
+          DateTime.fromMillisecondsSinceEpoch(decodedToken['exp'] * 1000);
       return DateTime.now().isAfter(expiration);
     } catch (e) {
       print('Error decoding token: $e');
@@ -109,7 +141,8 @@ class AuthService {
   static bool willTokenExpireSoon(String token) {
     try {
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      final expiration = DateTime.fromMillisecondsSinceEpoch(decodedToken['exp'] * 1000);
+      final expiration =
+          DateTime.fromMillisecondsSinceEpoch(decodedToken['exp'] * 1000);
       final fiveMinutesFromNow = DateTime.now().add(const Duration(minutes: 5));
       return fiveMinutesFromNow.isAfter(expiration);
     } catch (e) {
@@ -138,7 +171,6 @@ class AuthService {
     }
   }
 
-
   /// Validate token
   static Future<bool> validateToken() async {
     if (_authToken == null) return false;
@@ -148,7 +180,7 @@ class AuthService {
         'auth.php?action=validate',
         headers: {'Authorization': 'Bearer $_authToken'},
       );
-      
+
       return response['success'] ?? false;
     } catch (e) {
       await logout();
@@ -195,7 +227,7 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userDataString = prefs.getString(_userDataKey);
-      
+
       if (userDataString != null) {
         _currentUser = UserData.fromJson(jsonDecode(userDataString));
         return _currentUser;
@@ -220,9 +252,15 @@ class AuthService {
   /// Logout
   static Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      await prefs.remove(_userDataKey);
+      if (kIsWeb) {
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_tokenKey);
+        await prefs.remove(_userDataKey);
+        await prefs.remove(_tokenKey);
+        await prefs.remove(_userDataKey);
+        await prefs.remove(_platformKey);
+      }
       _authToken = null;
       _currentUser = null;
     } catch (e) {
@@ -248,25 +286,40 @@ class AuthService {
       user: dummyUserData,
     );
 
-    await _saveAuthData(dummyResponse,true);
+    await _saveAuthData(dummyResponse, true);
     return dummyResponse;
   }
 
-   // Save authentication data
-  static Future<void> _saveAuthData(LoginResponse loginResponse, bool persist) async {
+  // Save authentication data
+  static Future<void> _saveAuthData(
+      LoginResponse loginResponse, bool persist) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Save persistence preference
-      await prefs.setBool(_persistLoginKey, persist);
-      
-      // Save auth data
-      await prefs.setString(_tokenKey, loginResponse.token);
-      await prefs.setString(_userDataKey, jsonEncode(loginResponse.user.toJson()));
-      
+      final platform = getCurrentPlatform();
+      await saveLoginPlatform(platform);
+
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_persistLoginKey, persist);
+        await prefs.setString(_tokenKey, loginResponse.token);
+        await prefs.setString(
+            _userDataKey, jsonEncode(loginResponse.user.toJson()));
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+
+        // Save persistence preference
+        await prefs.setBool(_persistLoginKey, persist);
+
+        // Save auth data
+        await prefs.setString(_tokenKey, loginResponse.token);
+        await prefs.setString(
+            _userDataKey, jsonEncode(loginResponse.user.toJson()));
+        await prefs.setString(_platformKey, platform);
+      }
+
       _authToken = loginResponse.token;
       _currentUser = loginResponse.user;
       _initialized = true;
+      print('Login from: $platform');
     } catch (e) {
       throw Exception('Failed to save auth data: $e');
     }
@@ -285,9 +338,10 @@ class AuthService {
   /// Handle authentication errors
   static Exception _handleAuthError(dynamic error) {
     if (error is Exception) {
-      if (error.toString().contains('Connection refused') || 
+      if (error.toString().contains('Connection refused') ||
           error.toString().contains('SocketException')) {
-        return Exception('Unable to connect to server. Please check your internet connection.');
+        return Exception(
+            'Unable to connect to server. Please check your internet connection.');
       }
       if (error.toString().contains('401')) {
         return Exception('Invalid username or password.');

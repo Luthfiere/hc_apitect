@@ -10,7 +10,7 @@ android {
     signingConfigs {
         create("release") {
             keyAlias = "my-key-alias"
-            keyPassword = "hc_apitec"
+            keyPassword = "_apitec"
             storeFile = file("my-release-key.jks")
             storePassword = "hc_apitec"
         }
@@ -20,8 +20,8 @@ android {
         applicationId = "id.co.ptap.hcmobile"
         minSdk = 21 // Replace with your app's minimum SDK level
         targetSdk = 34
-        versionCode = 4 //update versioncode harus selalu lebih besar dari versioncode sebelumnya
-        versionName = "1.0.4"
+        versionCode = 7 //update versioncode harus selalu lebih besar dari versioncode sebelumnya
+        versionName = "1.0.7"
     }
 
     buildTypes {
