@@ -14,7 +14,7 @@ void main() async {
       await loadCertificate();
       HttpOverrides.global = MyHttpOverrides();
     }
-
+    // Initialize auth service
     await AuthService.init();
   } catch (e) {
     print('Initialization error: $e');
@@ -55,16 +55,17 @@ class _MyAppState extends State<MyApp> {
       home: FutureBuilder<bool>(
         future: _loginCheckFuture,
         builder: (context, snapshot) {
+          // Show loading indicator while checking
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
-
+          // Handle errors or not logged in state
           if (snapshot.hasError || snapshot.data != true) {
             return const OnboardingScreen();
           }
-
+          // User is logged in
           return const MainScreen();
         },
       ),
