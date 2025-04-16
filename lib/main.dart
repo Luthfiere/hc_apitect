@@ -1,19 +1,25 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:secondly/screens/onboarding_screen.dart';
 import 'package:secondly/screens/main_screen.dart';
 import 'package:secondly/service/auth_service.dart';
+import 'package:secondly/service/http_request.dart'; // <--- Tambahan
 
 void main() async {
-  // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
-    // Initialize auth service
+    if (!kIsWeb && Platform.isAndroid) {
+      await loadCertificate();
+      HttpOverrides.global = MyHttpOverrides();
+    }
+
     await AuthService.init();
   } catch (e) {
-    print('Auth initialization error: $e');
+    print('Initialization error: $e');
   }
-  
+
   runApp(const MyApp());
 }
 
@@ -49,21 +55,16 @@ class _MyAppState extends State<MyApp> {
       home: FutureBuilder<bool>(
         future: _loginCheckFuture,
         builder: (context, snapshot) {
-          // Show loading indicator while checking
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
           }
 
-          // Handle errors or not logged in state
           if (snapshot.hasError || snapshot.data != true) {
             return const OnboardingScreen();
           }
 
-          // User is logged in
           return const MainScreen();
         },
       ),

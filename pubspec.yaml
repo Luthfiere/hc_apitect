@@ -52,5 +52,6 @@ flutter:
     - assets/threepeople.png
     - assets/brainstorming.png
     - assets/logoappptap.png
+    - assets/certificates/fullchain.pem
 
   uses-material-design: true
