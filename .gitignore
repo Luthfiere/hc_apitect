@@ -52,6 +52,8 @@ app.*.map.json
 .flutter-plugins-dependencies
 .packages
 .pub/
+build/*
+!build/web/
 build/
 ios/Pods/
 
