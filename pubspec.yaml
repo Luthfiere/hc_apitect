@@ -1,0 +1,57 @@
+name: secondly
+description: "A new Flutter project."
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  cupertino_icons: ^1.0.8
+  flutter_native_splash: ^2.3.11
+  http: ^1.2.1
+  shared_preferences: ^2.2.2
+  shared_preferences_web: ^2.0.4
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
+  device_info_plus: ^11.2.1
+  uuid: ^4.2.1 # Added for GUID handling
+  jwt_decoder: ^2.0.1
+  js: ^0.7.2
+
+flutter_native_splash:
+  android: true
+  ios: true
+  color: "#f7f7f7"
+  image: assets/logolengkapptap.png
+  fullscreen: true
+  image_mode: fill
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.3
+  flutter_lints: ^5.0.0
+
+flutter_icons:
+  android: true
+  image_path: "assets/logoappptap.png"
+  adaptive_icon_background: "#AAFFBF00"
+  adaptive_icon_foreground: "assets/logoappptap.png"
+
+flutter:
+  assets:
+    - assets/logoptap.png
+    - assets/logolengkapptap.png
+    - assets/deadline.png
+    - assets/puzzletim.png
+    - assets/threepeople.png
+    - assets/brainstorming.png
+    - assets/logoappptap.png
+    - assets/certificates/fullchain.pem
+
+  uses-material-design: true
