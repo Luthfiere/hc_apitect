@@ -18,6 +18,7 @@ migrate_working_dir/
 *.iws
 .idea/
 
+
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -62,6 +63,7 @@ ios/Pods/
 **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.*
+**/android/app/.cxx
 
 # iOS specific
 **/ios/Flutter/.last_build_id
@@ -165,5 +167,8 @@ coverage/
 *.pyo
 *.swp
 
-
+#vercel
+-build/
++build/
++!build/web/**
 

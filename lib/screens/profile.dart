@@ -11,20 +11,20 @@ class ProfileScreen extends StatefulWidget {
 }
 
 void showComingSoonPopup(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Coming Soon"),
-        content: const Text("Fitur ini sedang dalam pengembangan."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("Tutup"),
-          ),
-        ],
-      ),
-    );
-  }
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text("Coming Soon"),
+      content: const Text("Fitur ini sedang dalam pengembangan."),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text("Tutup"),
+        ),
+      ],
+    ),
+  );
+}
 
 class _ProfileScreenState extends State<ProfileScreen> {
   UserData? userData;
@@ -109,8 +109,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: const Text('Logout', 
-                  style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Logout', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -196,7 +196,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => _handleLogout(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 15),
                   ),
                   child: const Text(
                     'Logout',

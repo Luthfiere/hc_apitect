@@ -5,15 +5,11 @@ import '../config/api_config.dart';
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
 
-  // Factory constructor
-  factory ApiClient() {
-    return _instance;
-  }
+  factory ApiClient() => _instance;
 
-  // Private constructor
   ApiClient._internal();
 
-  // Generic GET request
+  // GET request
   Future<Map<String, dynamic>> get(String endpoint,
       {Map<String, String>? headers}) async {
     try {
@@ -27,7 +23,7 @@ class ApiClient {
     }
   }
 
-  // Generic POST request
+  // POST request
   Future<Map<String, dynamic>> post(String endpoint,
       {Map<String, dynamic>? body, Map<String, String>? headers}) async {
     try {
@@ -42,11 +38,40 @@ class ApiClient {
     }
   }
 
-  // Helper to merge headers
+  // PUT request
+  Future<Map<String, dynamic>> put(String endpoint,
+      {Map<String, dynamic>? body, Map<String, String>? headers}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/$endpoint'),
+        headers: _mergeHeaders(headers),
+        body: json.encode(body),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('PUT request failed: $e');
+    }
+  }
+
+  // DELETE request
+  Future<Map<String, dynamic>> delete(String endpoint,
+      {Map<String, String>? headers}) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/$endpoint'),
+        headers: _mergeHeaders(headers),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('DELETE request failed: $e');
+    }
+  }
+
+  // Header merger
   Map<String, String> _mergeHeaders(Map<String, String>? additionalHeaders) {
     final defaultHeaders = {
       'Content-Type': 'application/json',
-      ...ApiConfig.headers
+      ...ApiConfig.headers,
     };
     if (additionalHeaders != null) {
       defaultHeaders.addAll(additionalHeaders);
@@ -56,12 +81,12 @@ class ApiClient {
 
   // Handle response
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final decoded = json.decode(response.body);
+    final body = response.body.isNotEmpty ? json.decode(response.body) : {};
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return decoded;
+      return body;
     } else {
       throw Exception(
-          '${response.statusCode}: ${decoded['message'] ?? 'Unknown error'}');
+          '${response.statusCode}: ${body['message'] ?? 'Unknown error'}');
     }
   }
 }

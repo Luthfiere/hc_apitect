@@ -30,30 +30,6 @@ class AuthService {
 
   static bool _initialized = false;
 
-  static String getCurrentPlatform() {
-    if (kIsWeb) return "Web";
-    return "Mobile";
-  }
-
-  static Future<void> saveLoginPlatform(String platform) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_platformKey, platform);
-    } catch (e) {
-      print("Error saving platform: $e");
-    }
-  }
-
-  static Future<String?> getLastLoginPlatform() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_platformKey);
-    } catch (e) {
-      print('Error getting login platform: $e');
-      return null;
-    }
-  }
-
   /// Initialize auth state with error handling
   static Future<void> init() async {
     if (_initialized) return;
@@ -95,7 +71,6 @@ class AuthService {
   // Login with persist option
   static Future<LoginResponse> login(String username, String password,
       {bool persist = true}) async {
-    print("Logged in from: ${getCurrentPlatform()}");
     try {
       if (ApiConfig.isDevelopment &&
           username == 'admin' &&
@@ -110,7 +85,6 @@ class AuthService {
           'password': password,
         },
       );
-      print('Login API response: $response');
 
       final loginResponse = LoginResponse.fromJson(response);
 
@@ -252,15 +226,13 @@ class AuthService {
   /// Logout
   static Future<void> logout() async {
     try {
-      if (kIsWeb) {
-      } else {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(_tokenKey);
-        await prefs.remove(_userDataKey);
-        await prefs.remove(_tokenKey);
-        await prefs.remove(_userDataKey);
-        await prefs.remove(_platformKey);
-      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      await prefs.remove(_userDataKey);
+      await prefs.remove(_tokenKey);
+      await prefs.remove(_userDataKey);
+      await prefs.remove(_platformKey);
+
       _authToken = null;
       _currentUser = null;
     } catch (e) {
@@ -294,32 +266,19 @@ class AuthService {
   static Future<void> _saveAuthData(
       LoginResponse loginResponse, bool persist) async {
     try {
-      final platform = getCurrentPlatform();
-      await saveLoginPlatform(platform);
+      final prefs = await SharedPreferences.getInstance();
 
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(_persistLoginKey, persist);
-        await prefs.setString(_tokenKey, loginResponse.token);
-        await prefs.setString(
-            _userDataKey, jsonEncode(loginResponse.user.toJson()));
-      } else {
-        final prefs = await SharedPreferences.getInstance();
+      // Save persistence preference
+      await prefs.setBool(_persistLoginKey, persist);
 
-        // Save persistence preference
-        await prefs.setBool(_persistLoginKey, persist);
-
-        // Save auth data
-        await prefs.setString(_tokenKey, loginResponse.token);
-        await prefs.setString(
-            _userDataKey, jsonEncode(loginResponse.user.toJson()));
-        await prefs.setString(_platformKey, platform);
-      }
+      // Save auth data
+      await prefs.setString(_tokenKey, loginResponse.token);
+      await prefs.setString(
+          _userDataKey, jsonEncode(loginResponse.user.toJson()));
 
       _authToken = loginResponse.token;
       _currentUser = loginResponse.user;
       _initialized = true;
-      print('Login from: $platform');
     } catch (e) {
       throw Exception('Failed to save auth data: $e');
     }
@@ -348,5 +307,15 @@ class AuthService {
       }
     }
     return Exception('Authentication failed: ${error.toString()}');
+  }
+
+  static Future<String?> getLastLoginPlatform() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_platformKey);
+    } catch (e) {
+      print('Error getting login platform: $e');
+      return null;
+    }
   }
 }
