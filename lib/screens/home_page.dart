@@ -177,7 +177,7 @@ class _HomePageState extends State<HomePage> {
   }
 
 // Web fallback implementation
-  Future<String> _getWebAddressFallback(Position position) async {
+  Future<String> _getAddressFromOSM(Position position) async {
     try {
       final response = await http
           .get(Uri.parse('https://nominatim.openstreetmap.org/reverse?'
@@ -190,17 +190,14 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
+        debugPrint(response.body);
         // Extract address components
         final address = data['address'];
         if (address != null) {
-          return [
-            address['road'],
-            address['village'] ?? address['town'] ?? address['city'],
-            address['country']
-          ].where((part) => part != null).join(', ');
+          return data['display_name'] ?? 'Address not available';
+        } else {
+          return 'Address not available';
         }
-        return data['display_name'] ?? 'Address not available';
       }
       throw Exception('OSM API error: ${response.statusCode}');
     } on TimeoutException {
@@ -221,7 +218,14 @@ class _HomePageState extends State<HomePage> {
         String address;
         if (kIsWeb) {
           debugPrint('Address lookup is not supported on web');
-          address = await _getWebAddressFallback(position);
+          try {
+            currentAddress = await _getAddressFromOSM(position);
+          } catch (osmError) {
+            debugPrint('OSM Lookup failed: $osmError');
+            currentAddress =
+                'Location: ${position.latitude.toStringAsFixed(6)}, '
+                '${position.longitude.toStringAsFixed(6)}';
+          }
         } else {
           List<Placemark> placemarks = await placemarkFromCoordinates(
             position.latitude,
@@ -369,6 +373,9 @@ class _HomePageState extends State<HomePage> {
     try {
       // Get location
       await _getCurrentPosition();
+      debugPrint(currentPosition.toString());
+      debugPrint(currentAddress);
+      debugPrint(googleMapsUrl);
 
       if (currentPosition == null ||
           currentAddress == null ||

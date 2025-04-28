@@ -54,7 +54,6 @@ app.*.map.json
 .pub/
 build/*
 !build/web/
-build/
 ios/Pods/
 
 # Android specific
