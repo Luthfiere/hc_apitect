@@ -210,7 +210,7 @@ class _HomePageState extends State<HomePage> {
       throw Exception('OSM API error: ${response.statusCode}');
     } on TimeoutException {
       debugPrint('[OSM] lokup timed out after $locationTimeout');
-      throw TimeoutException('OSM lookup timed out');
+      throw TimeoutException('OSM lookup timed out'); // Debugging
     } catch (e) {
       debugPrint('OSM lookup error: $e');
       // Fallback to coordinates if OSM fails
