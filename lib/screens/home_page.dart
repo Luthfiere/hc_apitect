@@ -178,6 +178,7 @@ class _HomePageState extends State<HomePage> {
 
 // Web fallback implementation
   Future<String> _getAddressFromOSM(Position position) async {
+    debugPrint('[OSM]lookup for posittion: $position');
     try {
       final response = await http
           .get(Uri.parse('https://nominatim.openstreetmap.org/reverse?'
@@ -188,19 +189,27 @@ class _HomePageState extends State<HomePage> {
               'addressdetails=1'))
           .timeout(Duration(seconds: locationTimeout));
 
+      debugPrint('[OSM]Request URL: $Uri');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('[OSM]response data: $data');
         debugPrint(response.body);
         // Extract address components
         final address = data['address'];
+        debugPrint('[OSM] Address: $address');
         if (address != null) {
-          return data['display_name'] ?? 'Address not available';
+          final displayName = data['display_name'] ?? 'Address not available';
+          debugPrint('[OSM]display_Name: $displayName');
+          return displayName;
         } else {
+          debugPrint('[OSM]No address components found in response');
           return 'Address not available';
         }
       }
+      debugPrint('[OSM] API status: ${response.statusCode} ');
       throw Exception('OSM API error: ${response.statusCode}');
     } on TimeoutException {
+      debugPrint('[OSM] lokup timed out after $locationTimeout');
       throw TimeoutException('OSM lookup timed out');
     } catch (e) {
       debugPrint('OSM lookup error: $e');
@@ -215,12 +224,13 @@ class _HomePageState extends State<HomePage> {
     debugPrint('Fetching address for position: $position');
     for (int i = 0; i < maxRetries; i++) {
       try {
-        String address;
         if (kIsWeb) {
           debugPrint('Address lookup is not supported on web');
           try {
+            debugPrint(_getAddressFromOSM(position).toString());
             currentAddress = await _getAddressFromOSM(position);
           } catch (osmError) {
+            debugPrint(currentAddress);
             debugPrint('OSM Lookup failed: $osmError');
             currentAddress =
                 'Location: ${position.latitude.toStringAsFixed(6)}, '
