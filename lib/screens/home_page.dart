@@ -221,7 +221,7 @@ class _HomePageState extends State<HomePage> {
           try {
             currentAddress = await _getAddressFromOSM(position);
           } catch (osmError) {
-            debugPrint('OSM Lookup failed: $osmError');
+            debugPrint('OSM Lookup failed: $osmError'); // debugging
             currentAddress =
                 'Location: ${position.latitude.toStringAsFixed(6)}, '
                 '${position.longitude.toStringAsFixed(6)}';
