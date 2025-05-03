@@ -173,3 +173,5 @@ coverage/
 +build/
 +!build/web/**
 
+.flutter-plugins 2
+.flutter-plugins-dependencies 2

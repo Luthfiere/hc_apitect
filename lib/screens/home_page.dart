@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:secondly/models/user_data.dart';
+import 'package:secondly/service/api_client.dart';
 import 'package:secondly/service/attendance_service.dart';
 import 'package:secondly/service/auth_service.dart';
 import 'attendance_page.dart';
@@ -48,6 +49,8 @@ class _HomePageState extends State<HomePage> {
 
   static const int maxRetries = 3;
   static const int locationTimeout = 30; // seconds
+
+  static final _apiClient = ApiClient();
 
   bool get _isDesktop {
     if (!kIsWeb) return false; // Only apply responsive layout on web
@@ -121,21 +124,43 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _getCurrentPosition() async {
     final hasPermission = await _handleLocationPermission();
+    debugPrint("📋 Permission check result: $hasPermission");
     if (!hasPermission) return;
+    debugPrint("📋 Permission granted, proceeding to get location...");
 
     for (int i = 0; i < maxRetries; i++) {
+      debugPrint("Attempt ${i + 1} to get location...");
       try {
-        Position? position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: locationTimeout),
-        ).timeout(
-          Duration(seconds: locationTimeout),
-          onTimeout: () {
-            throw TimeoutException('Location request timed out');
-          },
-        );
+        Position position;
 
-        debugPrint('Location attempt ${i + 1} succeeded: $position');
+        // Different handling for web vs mobile
+        if (kIsWeb) {
+          debugPrint("Web platform detected, using API for geolocation");
+          // For web, use the browser's geolocation API through Geolocator
+          // but with web-optimized settings
+          position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low, // Lower accuracy works better on web
+          ).timeout(
+            Duration(seconds: locationTimeout),
+            onTimeout: () {
+              throw TimeoutException('Location request timed out on web');
+            },
+          );
+        } else {
+          // Mobile implementation remains the same
+          debugPrint("Mobile platform detected, using native geolocation");
+          position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: locationTimeout),
+          ).timeout(
+            Duration(seconds: locationTimeout),
+            onTimeout: () {
+              throw TimeoutException('Location request timed out on mobile');
+            },
+          );
+        }
+
+        debugPrint("Got position: lat=${position.latitude}, lon=${position.longitude}");
 
         setState(() {
           currentPosition = position;
@@ -143,30 +168,38 @@ class _HomePageState extends State<HomePage> {
               'https://www.google.com/maps/@${position.latitude},${position.longitude},18z';
         });
 
-        await _getAddressFromLatLng(position);
+        // Here's the key change - use API for web and geocoding for mobile
+        if (kIsWeb) {
+          await _getAddressFromAPI(position); // Use API for web
+        } else {
+          await _getAddressFromLatLng(position); // Use geocoding for mobile
+        }
+        
         return; // Success - exit the retry loop
       } catch (e) {
-        debugPrint('Location attempt ${i + 1} failed: $e');
-
-        if (e is TimeoutException) {
-          _showErrorSnackBar('Location request timed out. Retrying...');
-        } else if (e.toString().contains('LocationServiceDisabledException')) {
-          _showErrorSnackBar('Location services are disabled');
-          return;
-        } else if (e.toString().contains('PermissionDeniedException')) {
-          _showErrorSnackBar('Location permission denied');
-          return;
+        debugPrint("Location attempt ${i + 1} failed: $e");
+        
+        // Provide specific error messages for web-specific issues
+        if (kIsWeb) {
+          if (e.toString().contains('NotAllowedError') || 
+              e.toString().contains('PermissionDenied')) {
+            _showErrorSnackBar('Location permission denied by browser settings');
+          } else if (e.toString().contains('PositionUnavailable')) {
+            _showErrorSnackBar('Location information is unavailable in this browser');
+          } else if (e.toString().contains('TimeoutException')) {
+            _showErrorSnackBar('Browser location request timed out');
+          }
         }
 
         // If this was the last retry
         if (i == maxRetries - 1) {
           _showErrorDialog(
-              'Location Error',
-              'Unable to get your location after several attempts. Please ensure you have:\n\n'
-                  '• Good GPS signal\n'
-                  '• Internet connectivity\n'
-                  '• Location services enabled\n\n'
-                  'Would you like to try again?');
+            'Location Error',
+            'Unable to get your location after several attempts. Please ensure you have:\n\n'
+                '• Good GPS signal\n'
+                '• Internet connectivity\n'
+                '• Location services enabled\n\n'
+                'Would you like to try again?');
           return;
         }
 
@@ -176,101 +209,44 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-// Web fallback implementation
-  Future<String> _getAddressFromOSM(Position position) async {
-    debugPrint('[OSM]lookup for posittion: $position');
-    try {
-      final response = await http
-          .get(Uri.parse('https://nominatim.openstreetmap.org/reverse?'
-              'format=json&'
-              'lat=${position.latitude}&'
-              'lon=${position.longitude}&'
-              'zoom=18&' // More detailed results
-              'addressdetails=1'))
-          .timeout(Duration(seconds: locationTimeout));
-
-      debugPrint('[OSM]Request URL: $Uri');
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('[OSM]response data: $data');
-        debugPrint(response.body);
-        // Extract address components
-        final address = data['address'];
-        debugPrint('[OSM] Address: $address');
-        if (address != null) {
-          final displayName = data['display_name'] ?? 'Address not available';
-          debugPrint('[OSM]display_Name: $displayName');
-          return displayName;
-        } else {
-          debugPrint('[OSM]No address components found in response');
-          return 'Address not available';
-        }
-      }
-      debugPrint('[OSM] API status: ${response.statusCode} ');
-      throw Exception('OSM API error: ${response.statusCode}');
-    } on TimeoutException {
-      debugPrint('[OSM] lokup timed out after $locationTimeout');
-      throw TimeoutException('OSM lookup timed out'); // Debugging
-    } catch (e) {
-      debugPrint('OSM lookup error: $e');
-      // Fallback to coordinates if OSM fails
-      return 'Position: ${position.latitude.toStringAsFixed(6)}, '
-          '${position.longitude.toStringAsFixed(6)}';
-    }
-  }
-
-  // Address lookup with retrie
+  // Clean up the _getAddressFromLatLng method to remove redundant web handling
   Future<void> _getAddressFromLatLng(Position position) async {
-    debugPrint('Fetching address for position: $position');
+    debugPrint("Getting address from coordinates for position: $position");
     for (int i = 0; i < maxRetries; i++) {
       try {
-        if (kIsWeb) {
-          debugPrint('Address lookup is not supported on web');
-          try {
-            debugPrint(_getAddressFromOSM(position).toString());
-            currentAddress = await _getAddressFromOSM(position);
-          } catch (osmError) {
-            debugPrint(currentAddress);
-            debugPrint('OSM Lookup failed: $osmError');
-            currentAddress =
-                'Location: ${position.latitude.toStringAsFixed(6)}, '
-                '${position.longitude.toStringAsFixed(6)}';
-          }
-        } else {
-          List<Placemark> placemarks = await placemarkFromCoordinates(
-            position.latitude,
-            position.longitude,
-          ).timeout(
-            Duration(seconds: locationTimeout),
-            onTimeout: () {
-              throw TimeoutException('Address lookup timed out');
-            },
-          );
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        ).timeout(
+          Duration(seconds: locationTimeout),
+          onTimeout: () {
+            throw TimeoutException('Address lookup timed out');
+          },
+        );
 
-          debugPrint(
-              'Placemark lookup attempt ${i + 1} succeeded: $placemarks');
+        debugPrint("Placemark lookup attempt ${i + 1} succeeded: $placemarks");
 
-          if (placemarks.isEmpty) {
-            debugPrint('No address found for the given coordinates');
-            throw Exception('No address found');
-          }
-
-          Placemark place = placemarks[0];
-          setState(() {
-            currentAddress =
-                '${place.street ?? ''}, ${place.subLocality ?? ''}, '
-                        '${place.subAdministrativeArea ?? ''}, ${place.postalCode ?? ''}, '
-                        '${place.country ?? ''}'
-                    .replaceAll(RegExp(r', ,'), ',') // Remove empty components
-                    .replaceAll(RegExp(r',+'), ',') // Remove multiple commas
-                    .replaceAll(RegExp(r'^\s*,\s*|\s*,\s*$'),
-                        '') // Remove leading/trailing commas
-                    .trim();
-          });
+        if (placemarks.isEmpty) {
+          debugPrint('No address found for the given coordinates');
+          throw Exception('No address found');
         }
+
+        Placemark place = placemarks[0];
+        setState(() {
+          currentAddress =
+              '${place.street ?? ''}, ${place.subLocality ?? ''}, '
+                      '${place.subAdministrativeArea ?? ''}, ${place.postalCode ?? ''}, '
+                      '${place.country ?? ''}'
+                  .replaceAll(RegExp(r', ,'), ',') // Remove empty components
+                  .replaceAll(RegExp(r',+'), ',') // Remove multiple commas
+                  .replaceAll(RegExp(r'^\s*,\s*|\s*,\s*$'),
+                      '') // Remove leading/trailing commas
+                  .trim();
+        });
+        
         return; // Success - exit the retry loop
       } catch (e) {
-        debugPrint('Address lookup attempt test ${i + 1} failed: $e');
+        debugPrint('Address lookup attempt ${i + 1} failed: $e');
 
         // If this was the last retry
         if (i == maxRetries - 1) {
@@ -286,6 +262,45 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+
+  // Make sure _getAddressFromAPI is properly implemented
+  Future<void> _getAddressFromAPI(Position position) async {
+    debugPrint('Getting address from API for position: $position');
+    try {
+      final token = AuthService.authToken;
+      
+      // Use your own API for reverse geocoding
+      final response = await _apiClient.post(
+      'api_mobile.php?operation=reverseGeocode',
+      body: {
+        'longitude': position.longitude.toString(),
+        'latitude': position.latitude.toString(),
+      },
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response['success'] == true && response['data'] != null) {
+      final data = response['data'];
+      final displayName = data['display_name'] ?? '';
+      
+      setState(() {
+        currentAddress = displayName;
+      });
+      
+      debugPrint('Successfully retrieved address: $displayName');
+    } else {
+      throw Exception('API returned error or no data');
+    }
+  } catch (e) {
+    debugPrint('Error getting address from API: $e');
+    setState(() {
+      currentAddress = 'Location: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+    });
+    _showErrorSnackBar('Could not get street address from API');
+  }
+}
 
   Future<void> _fetchAttendanceData() async {
     setState(() {
@@ -382,6 +397,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       // Get location
+      debugPrint("trying to handle clock in clock out");
       await _getCurrentPosition();
       debugPrint(currentPosition.toString());
       debugPrint(currentAddress);

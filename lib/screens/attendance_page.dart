@@ -168,7 +168,8 @@ class AttendancePageState extends State<AttendancePage> {
         await _getAddressFromLatLng(position);
         return;
       } catch (e) {
-        debugPrint("Location attempt ${i + 1} failed: $e");
+        debugPrint("attendance page error");
+        debugPrint("Location xxx ${i + 1} failed: $e");
         if (e is TimeoutException) {
           _showErrorSnackBar('Location request timed out. Retrying...');
         } else if (e.toString().contains('LocationServiceDisabledException')) {
@@ -265,7 +266,7 @@ class AttendancePageState extends State<AttendancePage> {
           return;
         }
       } catch (e, stackTrace) {
-        debugPrint("Address lookup attempt ${i + 1} failed: $e");
+        debugPrint("Address lookup attempt shittt ${i + 1} failed: $e");
         debugPrint("StackTrace: $stackTrace");
 
         if (i == maxRetries - 1) {
