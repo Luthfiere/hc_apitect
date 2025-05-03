@@ -31,7 +31,7 @@ class AuthScreen extends StatelessWidget {
               children: [
                 const SizedBox(height: 20),
                 const Text(
-                  "Welcome to HC_Apitec",
+                  "Welcome to - PTAP HRIS",
                   style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
